@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriFamille</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --g:#1ED9A0;--gd:#0D9B6E;--gl:#E6FBF5;
+  --bg:#F2F6F4;--white:#FFFFFF;
+  --dark:#0D1B16;--text:#243028;--muted:#7B9289;--border:#DDE8E3;
+  --red:#FF5B5B;--shadow:0 2px 16px rgba(0,60,30,.08);--r:14px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
+
+/* Login */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D1B16 0%,#1a3529 100%);padding:20px;}
+.login-card{background:var(--white);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.3);}
+.login-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--dark);text-align:center;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.login-mark{width:36px;height:36px;background:var(--g);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:28px;}
+.login-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;margin-top:14px;}
+.login-err{font-size:12.5px;color:var(--red);text-align:center;margin-top:12px;min-height:18px;}
+.login-foot{text-align:center;font-size:11.5px;color:var(--muted);margin-top:16px;}
+#app{display:none;}
+
+/* Loading bar */
+.lbar{position:fixed;top:0;left:0;height:3px;background:var(--g);z-index:999;transition:width .4s ease,opacity .3s;width:0;opacity:0;}
+.lbar.active{width:70%;opacity:1;}.lbar.done{width:100%;opacity:0;}
+
+/* Spinner */
+.spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(30,217,160,.3);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Header */
+.hdr{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;height:62px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--dark);display:flex;align-items:center;gap:8px;letter-spacing:-.02em;margin-right:auto;}
+.logo-mark{width:30px;height:30px;background:var(--g);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.nav{display:flex;gap:3px;}
+.nb{padding:7px 15px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.nb.active{background:var(--gl);color:var(--gd);}
+.nb:not(.active):hover{background:var(--bg);color:var(--text);}
+.hdr-acts{display:flex;gap:6px;margin-left:6px;}
+.icobtn{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted);transition:all .15s;}
+.icobtn:hover{border-color:var(--g);color:var(--gd);}
+.user-pill{display:flex;align-items:center;gap:6px;background:var(--gl);border-radius:9px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--gd);white-space:nowrap;}
+.rt-dot{width:7px;height:7px;border-radius:50%;background:var(--g);display:inline-block;animation:rtpulse 2s ease-in-out infinite;flex-shrink:0;}
+@keyframes rtpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* Main */
+.main{max-width:1180px;margin:0 auto;padding:22px 18px;}
+
+/* Week nav */
+.wnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.wlbl{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--dark);}
+.wlbl span{color:var(--g);}
+.wc{display:flex;align-items:center;gap:7px;}
+.abtn{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;transition:all .15s;}
+.abtn:hover{border-color:var(--g);color:var(--gd);}
+
+/* Stats */
+.sbar{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;}
+.sc{background:var(--white);border-radius:12px;padding:11px 15px;box-shadow:var(--shadow);flex:1;min-width:90px;}
+.sn{font-family:'Syne',sans-serif;font-weight:800;font-size:23px;color:var(--gd);line-height:1;}
+.sl{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;}
+
+/* Calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+.dc{background:var(--white);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:2px solid transparent;cursor:pointer;transition:all .15s;}
+.dc:hover{border-color:var(--g);transform:translateY(-2px);}
+.dc.today{border-color:var(--g);}
+.dh{padding:8px 10px 7px;border-bottom:1px solid var(--border);text-align:center;background:var(--bg);}
+.dc.today .dh{background:var(--gl);}
+.dn-abbr{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.dn{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--dark);line-height:1.1;}
+.dc.today .dn{color:var(--gd);}
+.ms{padding:7px 8px;border-bottom:1px solid var(--bg);min-height:50px;position:relative;}
+.ms:last-child{border-bottom:none;}
+.msl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.msn{font-size:11px;font-weight:500;color:var(--text);line-height:1.3;padding-right:10px;}
+.mse{font-size:17px;color:var(--border);}
+.cdot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--g);}
+
+/* Panel */
+.ov{position:fixed;inset:0;background:rgba(13,27,22,.5);z-index:200;display:none;backdrop-filter:blur(3px);}
+.ov.open{display:block;animation:fadeIn .2s;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.panel{position:fixed;top:0;right:0;width:min(560px,100vw);height:100vh;background:var(--white);z-index:201;overflow-y:auto;display:none;}
+.panel.open{display:block;animation:slideIn .26s cubic-bezier(.32,.72,0,1);}
+.phdr{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white);z-index:2;}
+.ptitle{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--dark);text-transform:capitalize;}
+.xbtn{width:31px;height:31px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:all .15s;}
+.xbtn:hover{background:var(--bg);}
+.pbody{padding:16px 20px 48px;}
+
+/* Meal cards */
+.mc{border-radius:var(--r);padding:14px;margin-bottom:9px;border:1.5px solid var(--border);background:var(--white);box-shadow:var(--shadow);}
+.mc-empty{background:var(--bg);box-shadow:none;}
+.mchdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+.mctype{font-size:10px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.07em;}
+.mcacts{display:flex;gap:5px;}
+
+/* Form */
+.fi{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-family:inherit;font-size:13.5px;color:var(--text);background:var(--white);outline:none;transition:border-color .15s;}
+.fi:focus{border-color:var(--g);}
+.fta{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);background:var(--white);outline:none;resize:vertical;min-height:58px;transition:border-color .15s;}
+.fta:focus{border-color:var(--g);}
+.lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;margin-top:10px;display:block;}
+.ing-row{display:flex;gap:5px;margin-bottom:5px;align-items:center;}
+.iq{width:78px;flex-shrink:0;}
+.iname{flex:1;}
+.step-row{display:flex;gap:6px;margin-bottom:5px;align-items:flex-start;}
+.snb{min-width:22px;height:22px;background:var(--gl);color:var(--gd);border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:8px;font-family:'Syne',sans-serif;flex-shrink:0;}
+
+/* Buttons */
+.btn{padding:7px 15px;border-radius:9px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;}
+.btn:disabled{opacity:.55;cursor:not-allowed;}
+.bp{background:var(--g);color:var(--dark);}
+.bp:not(:disabled):hover{background:var(--gd);color:var(--white);}
+.bo{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.bo:not(:disabled):hover{border-color:var(--g);color:var(--gd);background:var(--gl);}
+.bg{background:transparent;color:var(--red);padding:5px 8px;border-radius:7px;font-size:12px;}
+.bg:hover{background:#FFEAEA;}
+.badd{background:var(--gl);color:var(--gd);border:1.5px dashed var(--g);font-size:12px;padding:5px 11px;border-radius:8px;}
+.bsm{padding:4px 10px;font-size:12px;border-radius:7px;}
+.blg{padding:11px 22px;font-size:14px;border-radius:11px;}
+
+/* Recipe display */
+.mname{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--dark);margin-bottom:10px;line-height:1.3;}
+.ilist{margin-bottom:9px;}
+.iitem{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.iitem:last-child{border-bottom:none;}
+.iqd{font-weight:700;color:var(--gd);min-width:68px;font-size:11.5px;font-family:'Syne',sans-serif;}
+details summary{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;padding:5px 0;list-style:none;display:flex;align-items:center;gap:5px;}
+details summary::before{content:'▶';font-size:8px;transition:transform .2s;}
+details[open] summary::before{transform:rotate(90deg);}
+.sitem{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5;}
+.sitem:last-child{border-bottom:none;}
+.ctog{display:flex;align-items:center;gap:8px;margin-top:11px;padding:9px 12px;background:var(--bg);border-radius:9px;cursor:pointer;border:1.5px solid var(--border);transition:all .15s;user-select:none;}
+.ctog.cooked{border-color:var(--g);background:var(--gl);}
+.cchk{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s;flex-shrink:0;}
+.ctog.cooked .cchk{background:var(--g);border-color:var(--g);color:var(--dark);}
+.ctxt{font-size:13px;font-weight:600;color:var(--muted);}
+.ctog.cooked .ctxt{color:var(--gd);}
+.div{height:1px;background:var(--border);margin:11px 0;}
+.edit-section{margin-top:12px;padding-top:11px;border-top:1px solid var(--border);}
+
+/* Shopping */
+.swrap{max-width:700px;margin:0 auto;}
+.pghdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.pgtitle{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--dark);}
+.fsec{margin-bottom:14px;}
+.flbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;}
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.chip:hover,.chip.active{border-color:var(--g);background:var(--gl);color:var(--gd);}
+.sg{background:var(--white);border-radius:var(--r);margin-bottom:9px;box-shadow:var(--shadow);overflow:hidden;}
+.sghdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--gl);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--dark);}
+.lbdg{width:24px;height:24px;background:var(--g);color:var(--dark);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:'Syne',sans-serif;}
+.si{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--bg);font-size:13.5px;cursor:pointer;transition:background .1s;}
+.si:last-child{border-bottom:none;}
+.si:hover{background:var(--bg);}
+.si.checked{text-decoration:line-through;color:var(--muted);}
+.sil{display:flex;align-items:center;flex:1;gap:8px;}
+.schk{width:16px;height:16px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s;}
+.si.checked .schk{background:var(--g);border-color:var(--g);color:var(--dark);}
+.sqty{font-weight:700;color:var(--gd);font-size:12px;font-family:'Syne',sans-serif;white-space:nowrap;}
+
+/* Modals */
+.mwrap{position:fixed;inset:0;background:rgba(13,27,22,.55);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;}
+.mwrap.open{display:flex;animation:fadeIn .2s;}
+.modal{background:var(--white);border-radius:18px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:slideUp .22s ease;}
+.mhdr{padding:18px 22px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white);z-index:2;border-radius:18px 18px 0 0;}
+.mtitle{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--dark);}
+.mbody{padding:18px 22px 26px;}
+.msec{margin-bottom:18px;}
+.mstitle{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--dark);margin-bottom:9px;}
+.dz{border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);}
+.dz:hover,.dz.drag-over{border-color:var(--g);background:var(--gl);}
+.codebl{background:var(--bg);border-radius:9px;padding:11px 13px;font-family:monospace;font-size:11.5px;color:var(--text);overflow-x:auto;line-height:1.75;border:1.5px solid var(--border);}
+.ptbl{width:100%;border-collapse:collapse;font-size:12px;}
+.ptbl th{background:var(--gl);color:var(--gd);font-weight:700;padding:7px 9px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
+.ptbl td{padding:6px 9px;border-bottom:1px solid var(--border);color:var(--text);}
+.ptbl tr:last-child td{border-bottom:none;}
+.ptbl tr:nth-child(even) td{background:var(--bg);}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--dark);color:var(--white);padding:10px 22px;border-radius:11px;font-size:13.5px;font-weight:500;z-index:999;transition:transform .3s cubic-bezier(.32,.72,0,1);pointer-events:none;white-space:nowrap;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+
+/* Empty state */
+.es{text-align:center;padding:50px 20px;color:var(--muted);}
+.ei{font-size:40px;margin-bottom:11px;}
+.etitle{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--dark);margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<div class="lbar" id="lbar"></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo"><div class="login-mark">🥗</div>NutriFamille</div>
+    <div class="login-sub">Planning familial · 2 adultes + 1 nourrisson</div>
+    <span class="login-lbl">Email</span>
+    <input class="fi" id="l-email" type="email" placeholder="prenom@famille.fr"
+      onkeydown="if(event.key==='Enter')document.getElementById('l-pwd').focus()">
+    <span class="login-lbl" style="margin-top:12px">Mot de passe</span>
+    <input class="fi" id="l-pwd" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doLogin()" style="margin-bottom:18px">
+    <button class="btn bp" id="l-btn" onclick="doLogin()" style="width:100%;justify-content:center;padding:11px;font-size:14px;">Se connecter</button>
+    <div class="login-err" id="l-err"></div>
+    <div class="login-foot"><span class="rt-dot"></span> Synchronisé en temps réel entre les 3 membres</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="hdr">
+    <div class="logo"><div class="logo-mark">🥗</div>NutriFamille</div>
+    <nav class="nav">
+      <button class="nb active" id="nb-cal" onclick="showView('cal')">📅 Calendrier</button>
+      <button class="nb" id="nb-shop" onclick="showView('shop')">🛒 Courses</button>
+    </nav>
+    <div class="hdr-acts">
+      <button class="icobtn" onclick="openImport()" title="Importer CSV">📥</button>
+      <button class="icobtn" onclick="doLogout()" title="Se déconnecter">🚪</button>
+    </div>
+    <div class="user-pill"><span class="rt-dot"></span><span id="user-email">…</span></div>
+  </header>
+
+  <main class="main">
+    <div id="view-cal">
+      <div class="wnav">
+        <div class="wlbl">Semaine du <span id="week-range">…</span></div>
+        <div class="wc">
+          <button class="abtn" onclick="prevWeek()">←</button>
+          <button class="btn bo bsm" onclick="goToday()">Aujourd'hui</button>
+          <button class="abtn" onclick="nextWeek()">→</button>
+        </div>
+      </div>
+      <div class="sbar" id="sbar"></div>
+      <div class="cal" id="cal-grid"></div>
+    </div>
+
+    <div id="view-shop" style="display:none">
+      <div class="swrap">
+        <div class="pghdr">
+          <div class="pgtitle">🛒 Liste de courses</div>
+          <button class="btn bp blg" onclick="exportPDF()">⬇ Exporter PDF</button>
+        </div>
+        <div class="fsec"><div class="flbl">Semaines</div><div class="chips" id="wchips"></div></div>
+        <div class="fsec"><div class="flbl">Type de repas</div><div class="chips" id="mchips"></div></div>
+        <div id="shop-content"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="ov" id="day-ov" onclick="closePanel()"></div>
+  <div class="panel" id="day-panel">
+    <div class="phdr">
+      <div class="ptitle" id="panel-title"></div>
+      <button class="xbtn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="pbody" id="panel-body"></div>
+  </div>
+
+  <div class="mwrap" id="import-modal">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="mhdr"><div class="mtitle">📥 Importer des repas (CSV)</div><button class="xbtn" onclick="closeImport()">✕</button></div>
+      <div class="mbody">
+        <div class="msec">
+          <div class="mstitle">📄 Format du fichier</div>
+          <div class="codebl">date,repas,nom,ingredients,etapes<br>2025-05-19,lunch,Poulet rôti,"200g:poulet;1:citron","Cuire 1h"<br>2025-05-20,dinner,Doro Wat,"500g:poulet;2cs:berbéré","Mijoter 40min"</div>
+          <div style="margin-top:9px;font-size:12px;color:var(--muted);line-height:1.8;">
+            <strong style="color:var(--text)">repas :</strong> breakfast | lunch | dinner<br>
+            <strong style="color:var(--text)">ingredients :</strong> séparés par <code style="background:var(--bg);padding:1px 5px;border-radius:4px">;</code> — format <code style="background:var(--bg);padding:1px 5px;border-radius:4px">quantité:nom</code><br>
+            <strong style="color:var(--text)">etapes :</strong> séparées par <code style="background:var(--bg);padding:1px 5px;border-radius:4px">;</code>
+          </div>
+          <button class="btn bo bsm" style="margin-top:9px" onclick="dlTemplate()">⬇ Télécharger le modèle</button>
+        </div>
+        <div class="msec">
+          <div class="mstitle">📂 Choisir le fichier</div>
+          <div class="dz" id="dz" onclick="document.getElementById('csv-in').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleDrop(event)">
+            <div style="font-size:30px;margin-bottom:7px">📁</div>
+            <div style="font-size:13px;color:var(--muted);font-weight:500">Glisse ici ou <strong style="color:var(--gd)">clique pour parcourir</strong></div>
+          </div>
+          <input type="file" id="csv-in" accept=".csv,text/csv" style="display:none" onchange="handleFileSelect(this)">
+        </div>
+        <div id="import-preview" style="display:none">
+          <div class="mstitle">👁 Aperçu — <span id="prev-count">0</span> repas</div>
+          <div style="overflow:auto;max-height:230px;border-radius:9px;border:1.5px solid var(--border)">
+            <table class="ptbl"><thead><tr><th>Date</th><th>Repas</th><th>Plat</th><th>Ingrédients</th></tr></thead>
+            <tbody id="prev-body"></tbody></table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn bp" id="confirm-import-btn" onclick="confirmImport()">✅ Importer</button>
+            <button class="btn bo" onclick="cancelImport()">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// ⚠ CONFIGURATION — remplace ces deux valeurs
+//   Supabase Dashboard → Settings → API
+// ══════════════════════════════════════════════
+const SB_URL  = 'https://fjuiemftlgprcphvgzhu.supabase.co';
+const SB_ANON = 'sb_publishable_B4IWscKybcLU4EHgAog29w_v6bMOXmb';
+// ══════════════════════════════════════════════
+
+const sb = window.supabase.createClient(SB_URL, SB_ANON);
+
+const MT = [
+  {key:'breakfast',label:'Petit-déjeuner',short:'Petit-déj',icon:'☕'},
+  {key:'lunch',    label:'Déjeuner',       short:'Déjeuner', icon:'🥗'},
+  {key:'dinner',   label:'Dîner',          short:'Dîner',    icon:'🍽'},
+];
+const DAY_NAMES = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const REPAS_MAP = {
+  breakfast:'breakfast','petit-dejeuner':'breakfast','petit-déjeuner':'breakfast',
+  lunch:'lunch',dejeuner:'lunch','déjeuner':'lunch',
+  dinner:'dinner',diner:'dinner','dîner':'dinner',
+};
+
+let S = {
+  weekStart: getMonday(new Date()),
+  meals: {},
+  checked: JSON.parse(localStorage.getItem('nf_checked')||'{}'),
+  view: 'cal', openDate: null,
+  shopWeeks: [], shopMeals: [],
+  importRows: [], editing: {}, session: null,
+};
+function saveChecked(){localStorage.setItem('nf_checked',JSON.stringify(S.checked));}
+
+function getMonday(d){const dt=new Date(d),day=dt.getDay();dt.setDate(dt.getDate()-(day===0?6:day-1));dt.setHours(0,0,0,0);return dt;}
+function dk(d){return d.toISOString().split('T')[0];}
+function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt;}
+function fmt(d,o){return d.toLocaleDateString('fr-FR',o);}
+function parseKey(k){return new Date(k+'T12:00:00');}
+function isToday(d){return dk(d)===dk(new Date());}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function lbStart(){const b=document.getElementById('lbar');b.className='lbar active';}
+function lbEnd(){const b=document.getElementById('lbar');b.className='lbar done';setTimeout(()=>b.className='lbar',400);}
+
+// AUTH
+async function checkAuth(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){S.session=session;showApp(session.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();}
+  else showLogin();
+}
+function showLogin(){document.getElementById('login-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function showApp(user){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const e=user.email||'';
+  document.getElementById('user-email').textContent=e.length>22?e.substring(0,20)+'…':e;
+}
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim();
+  const pwd=document.getElementById('l-pwd').value;
+  const btn=document.getElementById('l-btn');
+  const err=document.getElementById('l-err');
+  if(!email||!pwd){err.textContent='Email et mot de passe requis.';return;}
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Connexion…';err.textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pwd});
+  if(error){btn.disabled=false;btn.innerHTML='Se connecter';err.textContent=error.message==='Invalid login credentials'?'Email ou mot de passe incorrect.':error.message;return;}
+  S.session=data.session;showApp(data.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();renderCal();
+}
+async function doLogout(){
+  if(!confirm('Se déconnecter ?'))return;
+  await sb.auth.signOut();S.meals={};S.session=null;showLogin();
+}
+
+// DATA
+async function loadMeals(){
+  const {data,error}=await sb.from('meals').select('*');
+  if(error){console.error(error);showToast('⚠ Erreur de chargement');return;}
+  S.meals=rowsToState(data||[]);
+  renderCal();
+  if(S.view==='shop')renderShop();
+}
+function rowsToState(rows){
+  const state={};
+  rows.forEach(r=>{
+    if(!state[r.date])state[r.date]={};
+    state[r.date][r.meal_type]={name:r.name,ingredients:r.ingredients||[],steps:r.steps||[],cooked:r.cooked,notes:r.notes||''};
+  });
+  return state;
+}
+async function saveMealDB(key,mealType,d){
+  const {error}=await sb.from('meals').upsert({
+    date:key,meal_type:mealType,name:d.name,ingredients:d.ingredients,
+    steps:d.steps,cooked:d.cooked,notes:d.notes,created_by:S.session?.user?.id||null,
+  },{onConflict:'date,meal_type'});
+  if(error){console.error(error);showToast('⚠ Erreur de sauvegarde');return false;}
+  return true;
+}
+async function deleteMealDB(key,mealType){
+  const {error}=await sb.from('meals').delete().match({date:key,meal_type:mealType});
+  if(error){console.error(error);showToast('⚠ Erreur de suppression');return false;}
+  return true;
+}
+async function patchMeal(key,mealType,patch){
+  const {error}=await sb.from('meals').update(patch).match({date:key,meal_type:mealType});
+  if(error)console.error(error);
+}
+function subscribeRealtime(){
+  sb.channel('meals-rt').on('postgres_changes',{event:'*',schema:'public',table:'meals'},()=>{loadMeals();}).subscribe();
+}
+
+// NAV
+function prevWeek(){S.weekStart=addDays(S.weekStart,-7);renderCal();}
+function nextWeek(){S.weekStart=addDays(S.weekStart,7);renderCal();}
+function goToday(){S.weekStart=getMonday(new Date());renderCal();}
+function showView(v){
+  S.view=v;
+  document.getElementById('view-cal').style.display=v==='cal'?'block':'none';
+  document.getElementById('view-shop').style.display=v==='shop'?'block':'none';
+  document.getElementById('nb-cal').classList.toggle('active',v==='cal');
+  document.getElementById('nb-shop').classList.toggle('active',v==='shop');
+  if(v==='shop')renderShop();
+}
+
+// CALENDAR
+function renderCal(){
+  const mon=S.weekStart,sun=addDays(mon,6);
+  document.getElementById('week-range').textContent=fmt(mon,{day:'numeric',month:'short'})+' – '+fmt(sun,{day:'numeric',month:'short',year:'numeric'});
+  let total=0,cooked=0,ings=0;
+  for(let i=0;i<7;i++){const key=dk(addDays(mon,i)),day=S.meals[key]||{};MT.forEach(mt=>{if(day[mt.key]){total++;if(day[mt.key].cooked)cooked++;ings+=(day[mt.key].ingredients||[]).length;}});}
+  document.getElementById('sbar').innerHTML=[[total,'Planifiés'],[cooked,'Cuisinés ✓'],[21-total,'À planifier'],[ings,'Ingrédients']].map(([n,l])=>`<div class="sc"><div class="sn">${n}</div><div class="sl">${l}</div></div>`).join('');
+  const grid=document.getElementById('cal-grid');grid.innerHTML='';
+  for(let i=0;i<7;i++){
+    const date=addDays(mon,i),key=dk(date),day=S.meals[key]||{};
+    const col=document.createElement('div');col.className='dc'+(isToday(date)?' today':'');col.onclick=()=>openDay(date);
+    col.innerHTML=`<div class="dh"><div class="dn-abbr">${DAY_NAMES[date.getDay()]}</div><div class="dn">${date.getDate()}</div></div>${MT.map(mt=>{const m=day[mt.key];return`<div class="ms"><div class="msl">${mt.icon}</div>${m?`<div class="msn">${escHtml(m.name)}</div>${m.cooked?'<div class="cdot"></div>':''}`:`<div class="mse">+</div>`}</div>`;}).join('')}`;
+    grid.appendChild(col);
+  }
+}
+
+// PANEL
+function openDay(date){
+  S.openDate=date;
+  document.getElementById('panel-title').textContent=fmt(date,{weekday:'long',day:'numeric',month:'long'});
+  renderPanel(dk(date));
+  document.getElementById('day-panel').classList.add('open');
+  document.getElementById('day-ov').classList.add('open');
+}
+function closePanel(){
+  document.getElementById('day-panel').classList.remove('open');
+  document.getElementById('day-ov').classList.remove('open');
+  S.openDate=null;S.editing={};renderCal();
+}
+function renderPanel(key){
+  const meals=S.meals[key]||{};
+  document.getElementById('panel-body').innerHTML=MT.map(mt=>buildCard(key,mt,meals[mt.key])).join('');
+}
+
+// BUILD CARD
+function buildCard(key,mt,meal){
+  const cid=`${key}-${mt.key}`,isEdit=!!S.editing[cid],ex=meal||{};
+  if(!meal||isEdit){
+    return`<div class="mc mc-empty" id="mc-${cid}">
+      <div class="mchdr"><div class="mctype">${mt.icon} ${mt.short}</div>${isEdit?`<button class="btn bg bsm" onclick="cancelEdit('${cid}','${key}')">Annuler</button>`:''}</div>
+      <span class="lbl">Nom du plat</span>
+      <input class="fi" id="mn-${cid}" placeholder="ex : Poulet rôti…" value="${escHtml(ex.name||'')}">
+      <span class="lbl">Ingrédients <span style="font-weight:400;opacity:.7">(facultatif)</span></span>
+      <div id="ir-${cid}">${(ex.ingredients&&ex.ingredients.length?ex.ingredients:[{}]).map((g,i)=>ingRow(cid,i,g.qty,g.name)).join('')}</div>
+      <button class="btn badd bsm" onclick="addIng('${cid}')" style="margin-bottom:9px">+ Ingrédient</button>
+      <span class="lbl">Étapes <span style="font-weight:400;opacity:.7">(facultatif)</span></span>
+      <div id="sr-${cid}">${(ex.steps&&ex.steps.length?ex.steps:['']).map((s,i)=>stepRow(cid,i,s)).join('')}</div>
+      <button class="btn badd bsm" onclick="addStep('${cid}')" style="margin-bottom:12px">+ Étape</button>
+      <button class="btn bp" id="sbtn-${cid}" onclick="saveManual('${key}','${mt.key}','${cid}')">💾 ${isEdit?'Mettre à jour':'Enregistrer'}</button>
+    </div>`;
+  }
+  const ingH=(meal.ingredients||[]).length?`<span class="lbl" style="margin-top:0">Ingrédients — 2 adultes</span><div class="ilist">${meal.ingredients.map(i=>`<div class="iitem"><span class="iqd">${escHtml(i.qty)}</span><span>${escHtml(i.name)}</span></div>`).join('')}</div>`:'';
+  const stH=(meal.steps||[]).length?`<details><summary>${meal.steps.length} étapes de préparation</summary>${meal.steps.map((s,i)=>`<div class="sitem"><div class="snb">${i+1}</div><div>${escHtml(s)}</div></div>`).join('')}</details>`:'';
+  return`<div class="mc" id="mc-${cid}">
+    <div class="mchdr"><div class="mctype">${mt.icon} ${mt.short}</div><div class="mcacts"><button class="btn bg bsm" onclick="deleteMeal('${key}','${mt.key}')">✕ Supprimer</button></div></div>
+    <div class="mname">${escHtml(meal.name)}</div>
+    ${ingH}${stH}
+    <div class="div"></div>
+    <div class="ctog${meal.cooked?' cooked':''}" onclick="toggleCooked('${key}','${mt.key}')">
+      <div class="cchk">${meal.cooked?'✓':''}</div>
+      <span class="ctxt">${meal.cooked?'✅ Cuisiné !':'Marquer comme cuisiné'}</span>
+    </div>
+    <span class="lbl">Notes personnelles</span>
+    <textarea class="fta" placeholder="Remarques…" onblur="saveNotes('${key}','${mt.key}',this.value)">${escHtml(meal.notes||'')}</textarea>
+    <div class="edit-section"><button class="btn bo bsm" onclick="startEdit('${cid}','${key}')">✏️ Modifier ce repas</button></div>
+  </div>`;
+}
+
+function ingRow(cid,idx,qty,name){return`<div class="ing-row" id="ir-${cid}-${idx}"><input class="fi iq" id="iq-${cid}-${idx}" placeholder="200g" value="${escHtml(qty||'')}"><input class="fi iname" id="in-${cid}-${idx}" placeholder="ingrédient" value="${escHtml(name||'')}"><button class="btn bg" onclick="rmRow('ir-${cid}-${idx}')" style="padding:4px 7px;font-size:15px;color:var(--muted)">×</button></div>`;}
+function stepRow(cid,idx,val){return`<div class="step-row" id="sr-${cid}-${idx}"><div class="snb">${idx+1}</div><input class="fi" id="st-${cid}-${idx}" placeholder="Décrivez cette étape…" style="flex:1" value="${escHtml(val||'')}"><button class="btn bg" onclick="rmRow('sr-${cid}-${idx}')" style="padding:4px 7px;font-size:15px;color:var(--muted)">×</button></div>`;}
+
+function addIng(cid){const c=document.getElementById('ir-'+cid);if(c)c.insertAdjacentHTML('beforeend',ingRow(cid,c.children.length,'',''));}
+function addStep(cid){const c=document.getElementById('sr-'+cid);if(c)c.insertAdjacentHTML('beforeend',stepRow(cid,c.children.length,''));}
+function rmRow(id){document.getElementById(id)?.remove();}
+function startEdit(cid,key){S.editing[cid]=true;renderPanel(key);}
+function cancelEdit(cid,key){delete S.editing[cid];renderPanel(key);}
+
+// SAVE MANUAL
+async function saveManual(key,mealType,cid){
+  const name=document.getElementById('mn-'+cid)?.value?.trim();
+  if(!name){showToast('⚠ Saisir le nom du plat');return;}
+  const ings=[];document.getElementById('ir-'+cid)?.querySelectorAll('.ing-row').forEach(r=>{const qty=r.querySelector('.iq')?.value?.trim(),nom=r.querySelector('.iname')?.value?.trim();if(nom)ings.push({qty:qty||'—',name:nom});});
+  const steps=[];document.getElementById('sr-'+cid)?.querySelectorAll('input[id^="st-"]').forEach(el=>{const s=el.value.trim();if(s)steps.push(s);});
+  const sbtn=document.getElementById('sbtn-'+cid);
+  if(sbtn){sbtn.disabled=true;sbtn.innerHTML='<div class="spin"></div> Enregistrement…';}
+  const ex=S.meals[key]?.[mealType]||{};
+  const d={name,ingredients:ings,steps,cooked:ex.cooked||false,notes:ex.notes||''};
+  const ok=await saveMealDB(key,mealType,d);
+  if(ok){if(!S.meals[key])S.meals[key]={};S.meals[key][mealType]=d;delete S.editing[cid];renderPanel(key);renderCal();showToast('💾 Repas enregistré !');}
+  else{if(sbtn){sbtn.disabled=false;sbtn.innerHTML='💾 Enregistrer';}}
+}
+
+// MEAL ACTIONS
+async function deleteMeal(key,mt){
+  if(!confirm('Supprimer ce repas ?'))return;
+  const ok=await deleteMealDB(key,mt);
+  if(!ok)return;
+  if(S.meals[key]){delete S.meals[key][mt];if(!Object.keys(S.meals[key]).length)delete S.meals[key];}
+  renderPanel(key);renderCal();showToast('Repas supprimé');
+}
+async function toggleCooked(key,mt){
+  if(!S.meals[key]?.[mt])return;
+  const v=!S.meals[key][mt].cooked;S.meals[key][mt].cooked=v;renderPanel(key);
+  await patchMeal(key,mt,{cooked:v});showToast(v?'✅ Cuisiné !':'Marqué non cuisiné');
+}
+async function saveNotes(key,mt,v){if(!S.meals[key]?.[mt])return;S.meals[key][mt].notes=v;await patchMeal(key,mt,{notes:v});}
+
+// CSV IMPORT
+function openImport(){document.getElementById('import-modal').classList.add('open');}
+function closeImport(){document.getElementById('import-modal').classList.remove('open');cancelImport();}
+function cancelImport(){S.importRows=[];document.getElementById('import-preview').style.display='none';document.getElementById('csv-in').value='';}
+document.getElementById('import-modal').addEventListener('click',e=>{if(e.target===document.getElementById('import-modal'))closeImport();});
+function handleDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)parseCSV(f);}
+function handleFileSelect(inp){const f=inp.files[0];if(f)parseCSV(f);}
+function parseCSV(file){
+  const r=new FileReader();r.onload=e=>{
+    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());if(!lines.length){showToast('⚠ Fichier vide');return;}
+    const rows=[],start=lines[0].toLowerCase().startsWith('date')?1:0;
+    for(let i=start;i<lines.length;i++){
+      const cols=parseCSVLine(lines[i]);if(cols.length<3)continue;
+      const[dateRaw,repasRaw,nom,ingRaw='',etRaw='']=cols;
+      const date=dateRaw.trim(),repas=REPAS_MAP[repasRaw.trim().toLowerCase()]||'';
+      if(!date||!repas||!nom.trim())continue;
+      const ingredients=ingRaw.trim()?ingRaw.split(';').map(s=>{const[qty,...rest]=s.split(':');return{qty:qty.trim(),name:rest.join(':').trim()};}).filter(i=>i.name):[];
+      const steps=etRaw.trim()?etRaw.split(';').map(s=>s.trim()).filter(Boolean):[];
+      rows.push({date,repas,nom:nom.trim(),ingredients,steps});
+    }
+    if(!rows.length){showToast('⚠ Aucun repas valide');return;}
+    S.importRows=rows;showPreview(rows);
+  };r.readAsText(file,'UTF-8');
+}
+function parseCSVLine(line){const res=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'&&!inQ){inQ=true;continue;}if(ch==='"'&&inQ){inQ=false;continue;}if(ch===','&&!inQ){res.push(cur);cur='';continue;}cur+=ch;}res.push(cur);return res;}
+function showPreview(rows){
+  document.getElementById('prev-count').textContent=rows.length;
+  document.getElementById('prev-body').innerHTML=rows.slice(0,20).map(r=>`<tr><td>${r.date}</td><td>${MT.find(m=>m.key===r.repas)?.short||r.repas}</td><td><strong>${escHtml(r.nom)}</strong></td><td style="font-size:11px;color:var(--muted)">${r.ingredients.slice(0,3).map(i=>i.qty+' '+i.name).join(', ')}${r.ingredients.length>3?'…':''}</td></tr>`).join('')+(rows.length>20?`<tr><td colspan="4" style="text-align:center;color:var(--muted);font-size:11px">… et ${rows.length-20} autres</td></tr>`:'');
+  document.getElementById('import-preview').style.display='block';
+}
+async function confirmImport(){
+  const btn=document.getElementById('confirm-import-btn');if(btn){btn.disabled=true;btn.innerHTML='<div class="spin"></div> Import…';}
+  let n=0;for(const r of S.importRows){const ok=await saveMealDB(r.date,r.repas,{name:r.nom,ingredients:r.ingredients,steps:r.steps,cooked:false,notes:''});if(ok)n++;}
+  await loadMeals();closeImport();showToast(`✅ ${n} repas importés !`);
+}
+function dlTemplate(){
+  const csv=`date,repas,nom,ingredients,etapes\n2025-05-19,lunch,Poulet rôti,"200g:poulet;1:citron;sel:qsp","Préchauffer 200°C;Cuire 1h15"\n2025-05-19,dinner,Doro Wat,"500g:poulet;3:oignons;2cs:berbéré","Revenir oignons 30min;Mijoter 40min"\n2025-05-20,breakfast,Akara,"200g:haricots cornilles;1:oignon","Mixer;Frire 5min"\n2025-05-20,dinner,Ratatouille,"2:courgettes;2:aubergines;3:tomates","Couper;Cuire 40min"`;
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nutrifamille-modele.csv';a.click();
+}
+
+// SHOPPING
+function allWeeks(){const s=new Set();Object.keys(S.meals).forEach(k=>s.add(dk(getMonday(parseKey(k)))));return[...s].sort();}
+function renderShop(){
+  const weeks=allWeeks();
+  document.getElementById('wchips').innerHTML=weeks.length?weeks.map(w=>{const m=parseKey(w),s=addDays(m,6),l=fmt(m,{day:'numeric',month:'short'})+' – '+fmt(s,{day:'numeric',month:'short'});return`<div class="chip${S.shopWeeks.includes(w)?' active':''}" onclick="toggleWeek('${w}')">${l}</div>`;}).join(''):'<span style="font-size:12px;color:var(--muted)">Aucun repas planifié.</span>';
+  document.getElementById('mchips').innerHTML=MT.map(mt=>`<div class="chip${S.shopMeals.includes(mt.key)?' active':''}" onclick="toggleMealF('${mt.key}')">${mt.icon} ${mt.short}</div>`).join('');
+  renderShopList();
+}
+function toggleWeek(w){const i=S.shopWeeks.indexOf(w);if(i>=0)S.shopWeeks.splice(i,1);else S.shopWeeks.push(w);renderShop();}
+function toggleMealF(mk){const i=S.shopMeals.indexOf(mk);if(i>=0)S.shopMeals.splice(i,1);else S.shopMeals.push(mk);renderShop();}
+function getIngredients(){
+  const out={};
+  Object.entries(S.meals).forEach(([dkey,dayMeals])=>{
+    if(S.shopWeeks.length){const wk=dk(getMonday(parseKey(dkey)));if(!S.shopWeeks.includes(wk))return;}
+    Object.entries(dayMeals).forEach(([mt,meal])=>{if(S.shopMeals.length&&!S.shopMeals.includes(mt))return;(meal?.ingredients||[]).forEach(i=>{const k=i.name.toLowerCase().trim();if(!out[k])out[k]={name:i.name,qtys:[]};if(i.qty&&i.qty!=='—')out[k].qtys.push(i.qty);});});
+  });return out;
+}
+function renderShopList(){
+  const ings=getIngredients(),keys=Object.keys(ings),el=document.getElementById('shop-content');
+  if(!keys.length){el.innerHTML=`<div class="es"><div class="ei">🛍</div><div class="etitle">Liste vide</div><div>Sélectionne une semaine ou ajoute des repas avec ingrédients.</div></div>`;return;}
+  const groups={};keys.sort().forEach(k=>{const l=k[0].toUpperCase();if(!groups[l])groups[l]=[];groups[l].push(ings[k]);});
+  el.innerHTML=Object.entries(groups).map(([l,items])=>`<div class="sg"><div class="sghdr"><div class="lbdg">${l}</div>${l}</div>${items.map(item=>{const ck=item.name.toLowerCase().trim(),ch=!!S.checked[ck];return`<div class="si${ch?' checked':''}" onclick="toggleSI('${ck}')"><div class="sil"><div class="schk">${ch?'✓':''}</div>${escHtml(item.name)}</div><span class="sqty">${item.qtys.join(' + ')||'—'}</span></div>`;}).join('')}</div>`).join('');
+}
+function toggleSI(k){S.checked[k]=!S.checked[k];saveChecked();renderShopList();}
+
+// PDF
+let _jsPDF=null;
+async function loadPDF(){if(_jsPDF)return _jsPDF;const g=window.jspdf?.jsPDF||window.jsPDF;if(g){_jsPDF=g;return g;}return new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';s.onload=()=>{_jsPDF=window.jspdf?.jsPDF||window.jsPDF;res(_jsPDF);};s.onerror=rej;document.head.appendChild(s);});}
+async function exportPDF(){
+  const btn=document.querySelector('[onclick="exportPDF()"]'),orig=btn?.innerHTML;
+  if(btn){btn.disabled=true;btn.innerHTML='<div class="spin"></div> Génération…';}
+  let jsPDF;try{jsPDF=await loadPDF();}catch{showToast('⚠ PDF inaccessible.');if(btn){btn.disabled=false;btn.innerHTML=orig;}return;}
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const ings=getIngredients(),keys=Object.keys(ings);
+  doc.setFillColor(30,217,160);doc.rect(0,0,210,28,'F');doc.setTextColor(255,255,255);doc.setFontSize(20);doc.setFont('helvetica','bold');doc.text('NutriFamille',14,18);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text('Liste de courses',150,18);
+  doc.setTextColor(36,48,40);doc.setFontSize(8.5);const today=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});doc.text(`Generee le ${today}  -  Foyer : 2 adultes + 1 nourrisson`,14,36);
+  if(!keys.length){doc.setFontSize(12);doc.setTextColor(36,48,40);doc.text('Aucun ingredient a afficher.',14,55);doc.save('liste-courses.pdf');if(btn){btn.disabled=false;btn.innerHTML=orig;}return;}
+  let y=48;const groups={};keys.sort().forEach(k=>{const l=k[0].toUpperCase();if(!groups[l])groups[l]=[];groups[l].push(ings[k]);});
+  Object.entries(groups).forEach(([l,items])=>{
+    y+=5;if(y>268){doc.addPage();y=18;}
+    doc.setFillColor(230,251,245);doc.rect(14,y-3,182,10,'F');doc.setFillColor(30,217,160);doc.rect(14,y-3,9,10,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(l,18.5,y+4);doc.setTextColor(13,155,110);doc.setFontSize(10);doc.text(l,28,y+4);y+=11;
+    items.forEach(item=>{if(y>275){doc.addPage();y=18;}doc.setFillColor(255,255,255);doc.setDrawColor(221,232,227);doc.rect(14,y-2,182,9,'FD');doc.setDrawColor(180,200,190);doc.setFillColor(255,255,255);doc.roundedRect(18,y+0.5,5,5,0.8,0.8,'FD');doc.setTextColor(36,48,40);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(item.name,28,y+4.5);doc.setTextColor(13,155,110);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(item.qtys.join(' + ')||'—',192,y+4.5,{align:'right'});y+=10;});
+  });
+  const np=doc.internal.getNumberOfPages();for(let p=1;p<=np;p++){doc.setPage(p);doc.setTextColor(180,190,185);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text('NutriFamille - Planning familial',14,290);doc.text(`Page ${p}/${np}`,196,290,{align:'right'});}
+  doc.save('liste-courses-nutrifamille.pdf');if(btn){btn.disabled=false;btn.innerHTML=orig;}showToast('📄 PDF telecharge !');
+}
+
+// TOAST
+let _t;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('vis');clearTimeout(_t);_t=setTimeout(()=>el.classList.remove('vis'),2800);}
+
+// INIT
+checkAuth();
+</script>
+</body>
+</html>
