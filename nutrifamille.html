@@ -13,6 +13,7 @@
   --bg:#F2F6F4;--white:#FFFFFF;
   --dark:#0D1B16;--text:#243028;--muted:#7B9289;--border:#DDE8E3;
   --red:#FF5B5B;--shadow:0 2px 16px rgba(0,60,30,.08);--r:14px;
+  --hdr-h:62px;
 }
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
 
@@ -28,7 +29,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 #app{display:none;}
 
 /* Loading bar */
-.lbar{position:fixed;top:0;left:0;height:3px;background:var(--g);z-index:999;transition:width .4s ease,opacity .3s;width:0;opacity:0;}
+.lbar{position:fixed;top:0;left:0;height:3px;background:var(--g);z-index:9999;transition:width .4s ease,opacity .3s;width:0;opacity:0;}
 .lbar.active{width:70%;opacity:1;}.lbar.done{width:100%;opacity:0;}
 
 /* Spinner */
@@ -36,7 +37,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Header */
-.hdr{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;height:62px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
+.hdr{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;height:var(--hdr-h);display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--dark);display:flex;align-items:center;gap:8px;letter-spacing:-.02em;margin-right:auto;}
 .logo-mark{width:30px;height:30px;background:var(--g);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
 .nav{display:flex;gap:3px;}
@@ -50,14 +51,29 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .rt-dot{width:7px;height:7px;border-radius:50%;background:var(--g);display:inline-block;animation:rtpulse 2s ease-in-out infinite;flex-shrink:0;}
 @keyframes rtpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 
+/* ══ SEARCH OVERLAY ══ */
+.srch-wrap{position:sticky;top:var(--hdr-h);z-index:90;display:none;}
+.srch-wrap.open{display:block;animation:fadeIn .15s;}
+.srch-inner{display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--white);border-bottom:1px solid var(--border);box-shadow:0 4px 20px rgba(0,0,0,.08);}
+.srch-in{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:14px;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s;}
+.srch-in:focus{border-color:var(--g);background:var(--white);}
+.srch-results{background:var(--white);border-bottom:1px solid var(--border);max-height:320px;overflow-y:auto;}
+.sr-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;border-bottom:1px solid var(--bg);transition:background .1s;}
+.sr-item:last-child{border-bottom:none;}
+.sr-item:hover{background:var(--gl);}
+.sr-mt{font-size:11px;font-weight:700;color:var(--gd);min-width:72px;}
+.sr-name{flex:1;font-size:13.5px;font-weight:500;color:var(--text);}
+.sr-date{font-size:11px;color:var(--muted);white-space:nowrap;}
+.sr-empty{padding:16px 18px;text-align:center;font-size:13px;color:var(--muted);}
+
 /* Main */
 .main{max-width:1180px;margin:0 auto;padding:22px 18px;}
 
 /* Week nav */
-.wnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.wnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;}
 .wlbl{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--dark);}
 .wlbl span{color:var(--g);}
-.wc{display:flex;align-items:center;gap:7px;}
+.wc{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 .abtn{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;transition:all .15s;}
 .abtn:hover{border-color:var(--g);color:var(--gd);}
 
@@ -103,11 +119,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .mc-empty{background:var(--bg);box-shadow:none;}
 .mchdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
 .mctype{font-size:10px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.07em;}
-.mcacts{display:flex;gap:5px;}
+.mcacts{display:flex;gap:5px;flex-wrap:wrap;}
 
 /* Form */
 .fi{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-family:inherit;font-size:13.5px;color:var(--text);background:var(--white);outline:none;transition:border-color .15s;}
 .fi:focus{border-color:var(--g);}
+select.fi{cursor:pointer;}
 .fta{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);background:var(--white);outline:none;resize:vertical;min-height:58px;transition:border-color .15s;}
 .fta:focus{border-color:var(--g);}
 .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;margin-top:10px;display:block;}
@@ -152,7 +169,7 @@ details[open] summary::before{transform:rotate(90deg);}
 
 /* Shopping */
 .swrap{max-width:700px;margin:0 auto;}
-.pghdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.pghdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
 .pgtitle{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--dark);}
 .fsec{margin-bottom:14px;}
 .flbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;}
@@ -174,7 +191,7 @@ details[open] summary::before{transform:rotate(90deg);}
 /* Modals */
 .mwrap{position:fixed;inset:0;background:rgba(13,27,22,.55);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;}
 .mwrap.open{display:flex;animation:fadeIn .2s;}
-.modal{background:var(--white);border-radius:18px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:slideUp .22s ease;}
+.modal{background:var(--white);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:slideUp .22s ease;}
 .mhdr{padding:18px 22px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white);z-index:2;border-radius:18px 18px 0 0;}
 .mtitle{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--dark);}
 .mbody{padding:18px 22px 26px;}
@@ -197,6 +214,54 @@ details[open] summary::before{transform:rotate(90deg);}
 .es{text-align:center;padding:50px 20px;color:var(--muted);}
 .ei{font-size:40px;margin-bottom:11px;}
 .etitle{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--dark);margin-bottom:6px;}
+
+/* ══ MOBILE BOTTOM TAB ══ */
+.mob-tab{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:150;height:60px;}
+.mob-tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;border-top:3px solid transparent;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;font-size:10px;font-weight:600;transition:color .15s,border-color .15s;padding:8px 0 6px;}
+.mob-tab-btn.active{color:var(--gd);border-top-color:var(--g);}
+.mob-tab-btn .tab-icon{font-size:20px;line-height:1;}
+
+/* ══ MOBILE RESPONSIVE ══ */
+@media(max-width:640px){
+  :root{--hdr-h:56px;}
+  .hdr{padding:0 10px;height:56px;gap:6px;}
+  .logo{font-size:16px;}
+  .logo-mark{width:26px;height:26px;font-size:13px;}
+  .nav{display:none;}
+  .user-pill{display:none;}
+  .hdr-acts{gap:4px;}
+  .icobtn{width:32px;height:32px;font-size:14px;}
+
+  .mob-tab{display:flex;}
+
+  .main{padding:14px 10px 76px;}
+
+  /* Horizontal scroll calendar */
+  .cal{display:flex;overflow-x:auto;gap:10px;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .cal::-webkit-scrollbar{display:none;}
+  .dc{min-width:min(260px,80vw);scroll-snap-align:start;flex-shrink:0;}
+  .dc:hover{transform:none;}
+
+  .wnav{gap:6px;}
+  .wlbl{font-size:15px;}
+
+  .sbar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .sbar::-webkit-scrollbar{display:none;}
+  .sc{min-width:76px;flex-shrink:0;}
+  .sn{font-size:19px;}
+
+  /* Panel full-screen on mobile */
+  .panel{width:100vw;}
+
+  /* Toast above tab bar */
+  .toast{bottom:72px;}
+
+  /* Shopping */
+  .pghdr{flex-direction:column;align-items:flex-start;}
+}
+@media(min-width:641px){
+  .mob-tab{display:none;}
+}
 </style>
 </head>
 <body>
@@ -229,11 +294,21 @@ details[open] summary::before{transform:rotate(90deg);}
       <button class="nb" id="nb-shop" onclick="showView('shop')">🛒 Courses</button>
     </nav>
     <div class="hdr-acts">
+      <button class="icobtn" id="srch-btn" onclick="toggleSearch()" title="Rechercher un plat">🔍</button>
       <button class="icobtn" onclick="openImport()" title="Importer CSV">📥</button>
       <button class="icobtn" onclick="doLogout()" title="Se déconnecter">🚪</button>
     </div>
     <div class="user-pill"><span class="rt-dot"></span><span id="user-email">…</span></div>
   </header>
+
+  <!-- SEARCH BAR -->
+  <div id="srch-wrap" class="srch-wrap">
+    <div class="srch-inner">
+      <input id="srch-in" class="srch-in" type="search" placeholder="Rechercher un plat, un ingrédient…" oninput="doSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()">
+      <button class="xbtn" onclick="closeSearch()">✕</button>
+    </div>
+    <div id="srch-results" class="srch-results"></div>
+  </div>
 
   <main class="main">
     <div id="view-cal">
@@ -262,6 +337,16 @@ details[open] summary::before{transform:rotate(90deg);}
     </div>
   </main>
 
+  <!-- Mobile bottom tab bar -->
+  <div class="mob-tab">
+    <button class="mob-tab-btn active" id="mob-cal" onclick="showView('cal')">
+      <span class="tab-icon">📅</span>Calendrier
+    </button>
+    <button class="mob-tab-btn" id="mob-shop" onclick="showView('shop')">
+      <span class="tab-icon">🛒</span>Courses
+    </button>
+  </div>
+
   <div class="ov" id="day-ov" onclick="closePanel()"></div>
   <div class="panel" id="day-panel">
     <div class="phdr">
@@ -271,6 +356,38 @@ details[open] summary::before{transform:rotate(90deg);}
     <div class="pbody" id="panel-body"></div>
   </div>
 
+  <!-- COPY MODAL -->
+  <div class="mwrap" id="copy-modal" onclick="if(event.target===this)closeCopy()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="mhdr">
+        <div class="mtitle">📋 Copier ce repas</div>
+        <button class="xbtn" onclick="closeCopy()">✕</button>
+      </div>
+      <div class="mbody">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+          Copie la recette et les ingrédients vers un autre créneau.<br>
+          Le statut «&nbsp;cuisiné&nbsp;» est remis à zéro.
+        </p>
+        <span class="lbl">Date cible</span>
+        <input class="fi" type="date" id="copy-date" style="margin-bottom:10px">
+        <span class="lbl">Type de repas</span>
+        <select class="fi" id="copy-mtype">
+          <option value="breakfast">☕ Petit-déjeuner</option>
+          <option value="lunch">🥗 Déjeuner</option>
+          <option value="dinner">🍽 Dîner</option>
+        </select>
+        <div id="copy-warn" style="display:none;margin-top:10px;padding:8px 12px;background:#FFF3CD;border-radius:9px;font-size:12.5px;color:#856404;border:1px solid #FFE083;">
+          ⚠ Un repas existe déjà à cet emplacement — il sera remplacé.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button class="btn bp" onclick="confirmCopy()">📋 Copier</button>
+          <button class="btn bo" onclick="closeCopy()">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT MODAL -->
   <div class="mwrap" id="import-modal">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="mhdr"><div class="mtitle">📥 Importer des repas (CSV)</div><button class="xbtn" onclick="closeImport()">✕</button></div>
@@ -315,13 +432,8 @@ details[open] summary::before{transform:rotate(90deg);}
 <div class="toast" id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════
-// ⚠ CONFIGURATION — remplace ces deux valeurs
-//   Supabase Dashboard → Settings → API
-// ══════════════════════════════════════════════
 const SB_URL  = 'https://fjuiemftlgprcphvgzhu.supabase.co';
 const SB_ANON = 'sb_publishable_B4IWscKybcLU4EHgAog29w_v6bMOXmb';
-// ══════════════════════════════════════════════
 
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
 
@@ -427,13 +539,17 @@ function subscribeRealtime(){
 // NAV
 function prevWeek(){S.weekStart=addDays(S.weekStart,-7);renderCal();}
 function nextWeek(){S.weekStart=addDays(S.weekStart,7);renderCal();}
-function goToday(){S.weekStart=getMonday(new Date());renderCal();}
+function goToday(){S.weekStart=getMonday(new Date());renderCal();scrollToToday();}
 function showView(v){
   S.view=v;
   document.getElementById('view-cal').style.display=v==='cal'?'block':'none';
   document.getElementById('view-shop').style.display=v==='shop'?'block':'none';
+  // Desktop nav
   document.getElementById('nb-cal').classList.toggle('active',v==='cal');
   document.getElementById('nb-shop').classList.toggle('active',v==='shop');
+  // Mobile tab bar
+  document.getElementById('mob-cal').classList.toggle('active',v==='cal');
+  document.getElementById('mob-shop').classList.toggle('active',v==='shop');
   if(v==='shop')renderShop();
 }
 
@@ -447,10 +563,16 @@ function renderCal(){
   const grid=document.getElementById('cal-grid');grid.innerHTML='';
   for(let i=0;i<7;i++){
     const date=addDays(mon,i),key=dk(date),day=S.meals[key]||{};
-    const col=document.createElement('div');col.className='dc'+(isToday(date)?' today':'');col.onclick=()=>openDay(date);
+    const col=document.createElement('div');col.className='dc'+(isToday(date)?' today':'');col.id='dc-'+key;col.onclick=()=>openDay(date);
     col.innerHTML=`<div class="dh"><div class="dn-abbr">${DAY_NAMES[date.getDay()]}</div><div class="dn">${date.getDate()}</div></div>${MT.map(mt=>{const m=day[mt.key];return`<div class="ms"><div class="msl">${mt.icon}</div>${m?`<div class="msn">${escHtml(m.name)}</div>${m.cooked?'<div class="cdot"></div>':''}`:`<div class="mse">+</div>`}</div>`;}).join('')}`;
     grid.appendChild(col);
   }
+  scrollToToday();
+}
+
+function scrollToToday(){
+  const todayCard=document.getElementById('dc-'+dk(new Date()));
+  if(todayCard)todayCard.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
 
 // PANEL
@@ -491,7 +613,10 @@ function buildCard(key,mt,meal){
   const ingH=(meal.ingredients||[]).length?`<span class="lbl" style="margin-top:0">Ingrédients — 2 adultes</span><div class="ilist">${meal.ingredients.map(i=>`<div class="iitem"><span class="iqd">${escHtml(i.qty)}</span><span>${escHtml(i.name)}</span></div>`).join('')}</div>`:'';
   const stH=(meal.steps||[]).length?`<details><summary>${meal.steps.length} étapes de préparation</summary>${meal.steps.map((s,i)=>`<div class="sitem"><div class="snb">${i+1}</div><div>${escHtml(s)}</div></div>`).join('')}</details>`:'';
   return`<div class="mc" id="mc-${cid}">
-    <div class="mchdr"><div class="mctype">${mt.icon} ${mt.short}</div><div class="mcacts"><button class="btn bg bsm" onclick="deleteMeal('${key}','${mt.key}')">✕ Supprimer</button></div></div>
+    <div class="mchdr"><div class="mctype">${mt.icon} ${mt.short}</div><div class="mcacts">
+      <button class="btn bo bsm" onclick="openCopy('${key}','${mt.key}')">📋 Copier</button>
+      <button class="btn bg bsm" onclick="deleteMeal('${key}','${mt.key}')">✕ Supprimer</button>
+    </div></div>
     <div class="mname">${escHtml(meal.name)}</div>
     ${ingH}${stH}
     <div class="div"></div>
@@ -544,6 +669,93 @@ async function toggleCooked(key,mt){
 }
 async function saveNotes(key,mt,v){if(!S.meals[key]?.[mt])return;S.meals[key][mt].notes=v;await patchMeal(key,mt,{notes:v});}
 
+// ══ COPY MEAL ══
+let _copySrc=null;
+function openCopy(key,mt){
+  _copySrc={key,mt};
+  document.getElementById('copy-date').value=key;
+  document.getElementById('copy-mtype').value=mt;
+  document.getElementById('copy-warn').style.display='none';
+  document.getElementById('copy-modal').classList.add('open');
+  document.getElementById('copy-date').addEventListener('change',checkCopyConflict);
+  document.getElementById('copy-mtype').addEventListener('change',checkCopyConflict);
+}
+function checkCopyConflict(){
+  const date=document.getElementById('copy-date').value;
+  const mt=document.getElementById('copy-mtype').value;
+  const hasConflict=!!(S.meals[date]?.[mt]);
+  document.getElementById('copy-warn').style.display=hasConflict?'block':'none';
+}
+function closeCopy(){
+  document.getElementById('copy-modal').classList.remove('open');
+  _copySrc=null;
+}
+async function confirmCopy(){
+  if(!_copySrc)return;
+  const targetDate=document.getElementById('copy-date').value;
+  const targetMt=document.getElementById('copy-mtype').value;
+  if(!targetDate){showToast('⚠ Choisir une date');return;}
+  const src=S.meals[_copySrc.key]?.[_copySrc.mt];
+  if(!src){closeCopy();return;}
+  const d={...src,ingredients:[...src.ingredients],steps:[...src.steps],cooked:false,notes:''};
+  const ok=await saveMealDB(targetDate,targetMt,d);
+  if(ok){
+    if(!S.meals[targetDate])S.meals[targetDate]={};
+    S.meals[targetDate][targetMt]=d;
+    renderCal();
+    if(S.openDate&&dk(S.openDate)===targetDate)renderPanel(targetDate);
+    closeCopy();
+    showToast('📋 Repas copié !');
+  }
+}
+
+// ══ SEARCH ══
+let _srchOpen=false;
+function toggleSearch(){_srchOpen?closeSearch():openSearch();}
+function openSearch(){
+  _srchOpen=true;
+  document.getElementById('srch-wrap').classList.add('open');
+  document.getElementById('srch-in').value='';
+  document.getElementById('srch-results').innerHTML='';
+  setTimeout(()=>document.getElementById('srch-in').focus(),50);
+}
+function closeSearch(){
+  _srchOpen=false;
+  document.getElementById('srch-wrap').classList.remove('open');
+  document.getElementById('srch-results').innerHTML='';
+}
+function doSearch(q){
+  const trimmed=q.trim().toLowerCase();
+  const el=document.getElementById('srch-results');
+  if(!trimmed){el.innerHTML='';return;}
+  const results=[];
+  Object.entries(S.meals).forEach(([date,dayMeals])=>{
+    Object.entries(dayMeals).forEach(([mt,meal])=>{
+      const nameMatch=meal.name.toLowerCase().includes(trimmed);
+      const ingMatch=(meal.ingredients||[]).some(i=>i.name.toLowerCase().includes(trimmed));
+      if(nameMatch||ingMatch)results.push({date,mt,meal,nameMatch});
+    });
+  });
+  results.sort((a,b)=>b.date.localeCompare(a.date));
+  if(!results.length){el.innerHTML=`<div class="sr-empty">Aucun résultat pour «&nbsp;${escHtml(q.trim())}&nbsp;»</div>`;return;}
+  el.innerHTML=results.slice(0,15).map(r=>{
+    const d=parseKey(r.date);
+    const mt=MT.find(m=>m.key===r.mt);
+    const highlight=s=>s.replace(new RegExp(`(${escHtml(trimmed)})`,'gi'),'<mark style="background:var(--gl);color:var(--gd);border-radius:2px;padding:0 2px">$1</mark>');
+    return`<div class="sr-item" onclick="goToMeal('${r.date}')">
+      <div class="sr-mt">${mt.icon} ${mt.short}</div>
+      <div class="sr-name">${highlight(escHtml(r.meal.name))}</div>
+      <div class="sr-date">${fmt(d,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
+    </div>`;
+  }).join('')+(results.length>15?`<div class="sr-empty" style="font-size:11px">… et ${results.length-15} autres résultats</div>`:'');
+}
+function goToMeal(date){
+  closeSearch();
+  S.weekStart=getMonday(parseKey(date));
+  renderCal();
+  setTimeout(()=>openDay(parseKey(date)),120);
+}
+
 // CSV IMPORT
 function openImport(){document.getElementById('import-modal').classList.add('open');}
 function closeImport(){document.getElementById('import-modal').classList.remove('open');cancelImport();}
@@ -581,7 +793,7 @@ async function confirmImport(){
 }
 function dlTemplate(){
   const csv=`date,repas,nom,ingredients,etapes\n2025-05-19,lunch,Poulet rôti,"200g:poulet;1:citron;sel:qsp","Préchauffer 200°C;Cuire 1h15"\n2025-05-19,dinner,Doro Wat,"500g:poulet;3:oignons;2cs:berbéré","Revenir oignons 30min;Mijoter 40min"\n2025-05-20,breakfast,Akara,"200g:haricots cornilles;1:oignon","Mixer;Frire 5min"\n2025-05-20,dinner,Ratatouille,"2:courgettes;2:aubergines;3:tomates","Couper;Cuire 40min"`;
-  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nutrifamille-modele.csv';a.click();
+  const b=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nutrifamille-modele.csv';a.click();
 }
 
 // SHOPPING
