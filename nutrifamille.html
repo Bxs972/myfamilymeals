@@ -751,6 +751,61 @@ let S = {
 let _recipesMap = {};
 function saveChecked(){localStorage.setItem('nf_checked',JSON.stringify(S.checked));}
 
+// ─── LOGGER ────────────────────────────────────────────────────────────────
+// Supabase — exécuter dans l'éditeur SQL avant utilisation :
+//
+//   CREATE TABLE IF NOT EXISTS app_logs (
+//     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//     created_at  timestamptz DEFAULT now(),
+//     level       text NOT NULL CHECK (level IN ('debug','info','warn','error')),
+//     category    text NOT NULL,
+//     action      text NOT NULL,
+//     user_id     uuid,
+//     user_email  text,
+//     metadata    jsonb DEFAULT '{}',
+//     duration_ms integer
+//   );
+//   ALTER TABLE app_logs ENABLE ROW LEVEL SECURITY;
+//   CREATE POLICY "insert_own_logs" ON app_logs FOR INSERT TO authenticated
+//     WITH CHECK (user_id = auth.uid());
+//   CREATE POLICY "read_own_logs"   ON app_logs FOR SELECT TO authenticated
+//     USING (user_id = auth.uid());
+const AppLogger = (() => {
+  const COLORS = {debug:'#94a3b8',info:'#1ed9a0',warn:'#f59e0b',error:'#ef4444'};
+  let _queue = [], _timer = null;
+
+  function _log(level, category, action, meta) {
+    console.log(
+      `%c[NF:${level.toUpperCase()}] ${category}/${action}`,
+      `color:${COLORS[level]};font-weight:bold`,
+      Object.assign({ts:new Date().toISOString()}, meta||{})
+    );
+    if (level === 'debug' || !S.session) return;
+    _queue.push({
+      level, category, action,
+      user_id:    S.session?.user?.id    ?? null,
+      user_email: S.session?.user?.email ?? null,
+      metadata:   meta ?? {},
+    });
+    if (!_timer) _timer = setTimeout(_flush, 3000);
+  }
+
+  async function _flush() {
+    _timer = null;
+    if (!_queue.length || !S.session) return;
+    const batch = _queue.splice(0, 50);
+    try { await sb.from('app_logs').insert(batch); } catch (_) { /* logging ne doit jamais bloquer l'app */ }
+  }
+
+  return {
+    debug: (c,a,m) => _log('debug', c, a, m),
+    info:  (c,a,m) => _log('info',  c, a, m),
+    warn:  (c,a,m) => _log('warn',  c, a, m),
+    error: (c,a,m) => _log('error', c, a, m),
+  };
+})();
+// ───────────────────────────────────────────────────────────────────────────
+
 function getMonday(d){const dt=new Date(d),day=dt.getDay();dt.setDate(dt.getDate()-(day===0?6:day-1));dt.setHours(0,0,0,0);return dt;}
 function dk(d){return d.toISOString().split('T')[0];}
 function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt;}
@@ -764,8 +819,8 @@ function lbEnd(){const b=document.getElementById('lbar');b.className='lbar done'
 // AUTH
 async function checkAuth(){
   const {data:{session}}=await sb.auth.getSession();
-  if(session){S.session=session;showApp(session.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();}
-  else showLanding();
+  if(session){S.session=session;AppLogger.info('auth','session_restored',{email:session.user.email});showApp(session.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();}
+  else{AppLogger.debug('auth','no_session',{});showLanding();}
 }
 function showLanding(){
   document.getElementById('landing').style.display='block';
@@ -797,20 +852,25 @@ async function doLogin(){
   const err=document.getElementById('l-err');
   if(!email||!pwd){err.textContent='Email et mot de passe requis.';return;}
   btn.disabled=true;btn.innerHTML='<div class="spin"></div> Connexion…';err.textContent='';
+  const _t0login=Date.now();
   const {data,error}=await sb.auth.signInWithPassword({email,password:pwd});
-  if(error){btn.disabled=false;btn.innerHTML='Se connecter';err.textContent=error.message==='Invalid login credentials'?'Email ou mot de passe incorrect.':error.message;return;}
-  S.session=data.session;showApp(data.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();renderCal();
+  const _durLogin=Date.now()-_t0login;
+  if(error){AppLogger.warn('auth','login_failed',{email,reason:error.message,duration_ms:_durLogin});btn.disabled=false;btn.innerHTML='Se connecter';err.textContent=error.message==='Invalid login credentials'?'Email ou mot de passe incorrect.':error.message;return;}
+  S.session=data.session;AppLogger.info('auth','login_success',{email,duration_ms:_durLogin});showApp(data.user);lbStart();await loadMeals();lbEnd();subscribeRealtime();renderCal();
 }
 async function doLogout(){
   if(!confirm('Se déconnecter ?'))return;
+  AppLogger.info('auth','logout',{email:S.session?.user?.email});
   await sb.auth.signOut();S.meals={};S.session=null;showLanding();
 }
 
 // DATA
 async function loadMeals(){
+  const _t0load=Date.now();
   const {data,error}=await sb.from('meals').select('*');
-  if(error){console.error(error);showToast('⚠ Erreur de chargement');return;}
+  if(error){console.error(error);AppLogger.error('data','load_meals_failed',{error:error.message});showToast('⚠ Erreur de chargement');return;}
   S.meals=rowsToState(data||[]);
+  AppLogger.debug('data','load_meals_ok',{count:data?.length??0,duration_ms:Date.now()-_t0load});
   buildRecipeMap();
   renderCal();
   if(S.view==='shop')renderShop();
@@ -1024,20 +1084,23 @@ async function saveManual(key,mealType,cid){
   const fats=parseInt(document.getElementById('nf-'+cid)?.value)||0;
   if(cal||prot||carbs||fats)saveNutritionLocal(key,mealType,{calories:cal,proteins:prot,carbs:carbs,fats:fats});
   const d={name,ingredients:ings,steps,cooked:ex.cooked||false,notes:ex.notes||''};
+  AppLogger.info('meal','manual_save',{date:key,meal_type:mealType,name,ingredient_count:ings.length,step_count:steps.length});
   const ok=await saveMealDB(key,mealType,d);
   if(ok){if(!S.meals[key])S.meals[key]={};S.meals[key][mealType]=d;buildRecipeMap();delete S.editing[cid];renderPanel(key);renderCal();showToast('💾 Repas enregistré !');}
-  else if(sbtn){sbtn.disabled=false;sbtn.innerHTML='💾 Enregistrer';}
+  else{AppLogger.error('meal','manual_save_failed',{date:key,meal_type:mealType,name});if(sbtn){sbtn.disabled=false;sbtn.innerHTML='💾 Enregistrer';}}
 }
 
 async function deleteMeal(key,mt){
   if(!confirm('Supprimer ce repas ?'))return;
-  const ok=await deleteMealDB(key,mt);if(!ok)return;
+  AppLogger.info('meal','delete',{date:key,meal_type:mt,name:S.meals[key]?.[mt]?.name});
+  const ok=await deleteMealDB(key,mt);if(!ok){AppLogger.error('meal','delete_failed',{date:key,meal_type:mt});return;}
   if(S.meals[key]){delete S.meals[key][mt];if(!Object.keys(S.meals[key]).length)delete S.meals[key];}
   renderPanel(key);renderCal();showToast('Repas supprimé');
 }
 async function toggleCooked(key,mt){
   if(!S.meals[key]?.[mt])return;
   const v=!S.meals[key][mt].cooked;S.meals[key][mt].cooked=v;renderPanel(key);
+  AppLogger.info('meal','cooked_toggle',{date:key,meal_type:mt,cooked:v,name:S.meals[key][mt].name});
   await patchMeal(key,mt,{cooked:v});showToast(v?'✅ Cuisiné !':'Marqué non cuisiné');
 }
 async function saveNotes(key,mt,v){if(!S.meals[key]?.[mt])return;S.meals[key][mt].notes=v;await patchMeal(key,mt,{notes:v});}
@@ -1066,6 +1129,7 @@ async function confirmCopy(){
   if(!src){closeCopy();return;}
   const d={...src,ingredients:[...src.ingredients],steps:[...src.steps],cooked:false,notes:''};
   const srcNutr=getMealNutr(_copySrc.key,_copySrc.mt);
+  AppLogger.info('meal','copy',{src_date:_copySrc.key,src_type:_copySrc.mt,target_date:targetDate,target_type:targetMt,name:src.name});
   const ok=await saveMealDB(targetDate,targetMt,d);
   if(ok){
     if(srcNutr.calories||srcNutr.proteins)saveNutritionLocal(targetDate,targetMt,srcNutr);
@@ -1120,19 +1184,22 @@ document.getElementById('import-modal').addEventListener('click',e=>{if(e.target
 function handleDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)parseCSV(f);}
 function handleFileSelect(inp){const f=inp.files[0];if(f)parseCSV(f);}
 function parseCSV(file){
+  AppLogger.info('import','csv_parse_start',{filename:file.name,size_bytes:file.size});
   const r=new FileReader();r.onload=e=>{
-    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());if(!lines.length){showToast('⚠ Fichier vide');return;}
+    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());if(!lines.length){AppLogger.warn('import','csv_empty',{filename:file.name});showToast('⚠ Fichier vide');return;}
     const rows=[],start=lines[0].toLowerCase().startsWith('date')?1:0;
+    let _skipped=0;
     for(let i=start;i<lines.length;i++){
-      const cols=parseCSVLine(lines[i]);if(cols.length<3)continue;
+      const cols=parseCSVLine(lines[i]);if(cols.length<3){_skipped++;continue;}
       const[dateRaw,repasRaw,nom,ingRaw='',etRaw='']=cols;
       const date=dateRaw.trim(),repas=REPAS_MAP[repasRaw.trim().toLowerCase()]||'';
-      if(!date||!repas||!nom.trim())continue;
+      if(!date||!repas||!nom.trim()){_skipped++;continue;}
       const ingredients=ingRaw.trim()?ingRaw.split(';').map(s=>{const[qty,...rest]=s.split(':');return{qty:qty.trim(),name:rest.join(':').trim()};}).filter(i=>i.name):[];
       const steps=etRaw.trim()?etRaw.split(';').map(s=>s.trim()).filter(Boolean):[];
       rows.push({date,repas,nom:nom.trim(),ingredients,steps});
     }
-    if(!rows.length){showToast('⚠ Aucun repas valide');return;}
+    if(!rows.length){AppLogger.warn('import','csv_no_valid_rows',{filename:file.name,total_lines:lines.length-start,skipped:_skipped});showToast('⚠ Aucun repas valide');return;}
+    AppLogger.info('import','csv_parse_complete',{filename:file.name,valid_rows:rows.length,skipped_rows:_skipped});
     S.importRows=rows;showPreview(rows);
   };r.readAsText(file,'UTF-8');
 }
@@ -1144,7 +1211,12 @@ function showPreview(rows){
 }
 async function confirmImport(){
   const btn=document.getElementById('confirm-import-btn');if(btn){btn.disabled=true;btn.innerHTML='<div class="spin"></div> Import…';}
-  let n=0;for(const r of S.importRows){const ok=await saveMealDB(r.date,r.repas,{name:r.nom,ingredients:r.ingredients,steps:r.steps,cooked:false,notes:''});if(ok)n++;}
+  const _totalImport=S.importRows.length;
+  AppLogger.info('import','bulk_import_start',{total_rows:_totalImport});
+  const _t0import=Date.now();
+  let n=0,_errImport=0;
+  for(const r of S.importRows){const ok=await saveMealDB(r.date,r.repas,{name:r.nom,ingredients:r.ingredients,steps:r.steps,cooked:false,notes:''});if(ok)n++;else _errImport++;}
+  AppLogger.info('import','bulk_import_complete',{total_rows:_totalImport,imported:n,errors:_errImport,duration_ms:Date.now()-_t0import});
   await loadMeals();closeImport();showToast(`✅ ${n} repas importés !`);
 }
 function dlTemplate(){
@@ -1183,9 +1255,11 @@ async function loadPDF(){if(_jsPDF)return _jsPDF;const g=window.jspdf?.jsPDF||wi
 async function exportPDF(){
   const btn=document.querySelector('[onclick="exportPDF()"]'),orig=btn?.innerHTML;
   if(btn){btn.disabled=true;btn.innerHTML='<div class="spin"></div> Génération…';}
-  let jsPDF;try{jsPDF=await loadPDF();}catch{showToast('⚠ PDF inaccessible.');if(btn){btn.disabled=false;btn.innerHTML=orig;}return;}
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const _t0pdf=Date.now();
   const ings=getIngredients(),keys=Object.keys(ings);
+  AppLogger.info('export','pdf_export_start',{ingredient_count:keys.length,weeks_filter:S.shopWeeks,meals_filter:S.shopMeals});
+  let jsPDF;try{jsPDF=await loadPDF();}catch{AppLogger.error('export','pdf_load_failed',{duration_ms:Date.now()-_t0pdf});showToast('⚠ PDF inaccessible.');if(btn){btn.disabled=false;btn.innerHTML=orig;}return;}
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   doc.setFillColor(30,217,160);doc.rect(0,0,210,28,'F');doc.setTextColor(255,255,255);doc.setFontSize(20);doc.setFont('helvetica','bold');doc.text('NutriFamille',14,18);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text('Liste de courses',150,18);
   doc.setTextColor(36,48,40);doc.setFontSize(8.5);doc.text(`Generee le ${new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}`,14,36);
   if(!keys.length){doc.setFontSize(12);doc.text('Aucun ingredient.',14,55);doc.save('liste-courses.pdf');if(btn){btn.disabled=false;btn.innerHTML=orig;}return;}
@@ -1196,7 +1270,9 @@ async function exportPDF(){
     items.forEach(item=>{if(y>275){doc.addPage();y=18;}doc.setFillColor(255,255,255);doc.setDrawColor(221,232,227);doc.rect(14,y-2,182,9,'FD');doc.setTextColor(36,48,40);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.text(item.name,28,y+4.5);doc.setTextColor(13,155,110);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(item.qtys.join(' + ')||'—',192,y+4.5,{align:'right'});y+=10;});
   });
   const np=doc.internal.getNumberOfPages();for(let p=1;p<=np;p++){doc.setPage(p);doc.setTextColor(180,190,185);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text('NutriFamille',14,290);doc.text(`Page ${p}/${np}`,196,290,{align:'right'});}
-  doc.save('liste-courses-nutrifamille.pdf');if(btn){btn.disabled=false;btn.innerHTML=orig;}showToast('📄 PDF telecharge !');
+  doc.save('liste-courses-nutrifamille.pdf');
+  AppLogger.info('export','pdf_export_complete',{ingredient_count:keys.length,pages:np,duration_ms:Date.now()-_t0pdf});
+  if(btn){btn.disabled=false;btn.innerHTML=orig;}showToast('📄 PDF telecharge !');
 }
 
 // TOAST
